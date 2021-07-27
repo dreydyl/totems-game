@@ -1,0 +1,55 @@
+
+body {
+    background-color: #444;
+}
+
+.main {
+    display: flex;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(10, 50px);
+    column-gap: 0;
+}
+
+.square {
+    border: 1px solid green;
+    width: 50px;
+    height: 50px;
+    line-height: 50px;
+    text-align: center;
+}
+.square:hover {
+    background-color: #f0f099;
+}
+
+.stack {
+    display: flex;
+    flex-flow: column-reverse nowrap;
+    grid-template-columns: repeat(1, 1fr);
+}
+
+#cancel-button {
+    display: block;
+    background-color: #00000040;
+    color: #800;
+    border: 1px solid #800;
+    border-radius: 2px;
+}
+#cancel-button:hover {
+    color: #000;
+    background-color: #800;
+}
+
+#confirm-button {
+    display: block;
+    background-color: #00000040;
+    color: green;
+    border: 1px solid green;
+    border-radius: 2px;
+}
+#confirm-button:hover {
+    color: #000;
+    background-color: green;
+}
