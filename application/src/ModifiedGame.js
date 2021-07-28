@@ -53,7 +53,8 @@ function createStartingArray() {
             setup[i].stack.push({
                 currentSquare: i,
                 player: colorSetup[i],
-                type: boardSetup[i]
+                type: boardSetup[i],
+                valid: false
             });
             setup[i].stackHeight = heightMap.get(boardSetup[i]);
         }
@@ -224,10 +225,14 @@ function unmarkValidMoves(G) {
     }
 }
 
-function markValidPieces(G) {
+function markValidLoads(G) {
     let piece = movesMap.get(G.activePiece.type);
     validMovesBySteps(G, G.activePiece.currentSquare, piece.moves, G.squares[G.activePiece.currentSquare].stackHeight);
     G.squares[G.activePiece.currentSquare].valid = false;
+}
+
+function markValidPieces(G) {
+
 }
 
 export const Totems = {
@@ -301,6 +306,7 @@ export const Totems = {
             //     others: { stage: 'examinePiece' }
             // });
             unmarkValidMoves(G);
+            markValidPieces(G);
             // G.stage = "Select a piece";
             // ctx.events.setStage('selectPiece');
         },
@@ -320,7 +326,7 @@ export const Totems = {
                     loadPiece: (G, ctx) => {
                         if (G.activePiece.type == "F") {
                             unmarkValidMoves(G);
-                            markValidPieces(G);
+                            markValidLoads(G);
                             G.activeSquare = G.squares[G.activePiece.currentSquare];
                             G.activePiece = null;
                             G.stage = "Select a piece to carry";
@@ -372,6 +378,7 @@ export const Totems = {
                         }
                         G.activePiece = null;
                         unmarkValidMoves(G);
+                        G.activeSquare = null;
                         G.stage = "Select a piece";
                         // ctx.events.setStage('selectPiece');
                         ctx.events.endTurn();
@@ -399,6 +406,7 @@ export const Totems = {
 
                         G.activePiece = null;
                         unmarkValidMoves(G);
+                        G.activeSquare = null;
                         G.stage = "Select a piece";
                         ctx.events.endTurn();
                     },

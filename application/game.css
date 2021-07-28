@@ -27,7 +27,12 @@ body {
 .stack {
     display: flex;
     flex-flow: column-reverse nowrap;
-    grid-template-columns: repeat(1, 50.5px);
+    /* grid-template-columns: repeat(1, 52px); */
+}
+
+.button-stack {
+    display: flex;
+    flex-flow: column-reverse nowrap;
 }
 
 #cancel-button {
@@ -52,4 +57,36 @@ body {
 .button:hover {
     color: #000;
     background-color: green;
+}
+
+.stack-piece {
+    background-color: green;
+    border: 2px solid black;
+    border-radius: 2px;
+    width: 75px;
+    height: 100px;
+    text-align: center;
+    font-size: 2em;
+}
+.stack-piece:hover {
+    border-color: white;
+    color: white;
+}
+
+.clickable-piece:hover {
+    cursor: pointer;
+}
+
+.piece-C,.piece-W,.piece-E,.piece-T {
+    height: 200px;
+}
+.piece-H {
+    height: 300px;
+}
+
+.piece-player0 {
+    background-color: red;
+}
+.piece-player1 {
+    background-color: blue;
 }

@@ -36,6 +36,9 @@ class TotemsClient {
         let stack = document.createElement("div");
         stack.className = "stack";
 
+        let buttonStack = document.createElement("div");
+        buttonStack.className = "button-stack";
+
         let confirmButton = document.createElement("div");
         confirmButton.id = "confirm-button";
         confirmButton.className = "button";
@@ -56,12 +59,13 @@ class TotemsClient {
         unloadButton.className = "button";
         unloadButton.textContent = "Unload";
 
-        stack.appendChild(confirmButton);
-        stack.appendChild(carryButton);
-        stack.appendChild(cancelButton);
-        stack.appendChild(unloadButton);
+        buttonStack.appendChild(confirmButton);
+        buttonStack.appendChild(carryButton);
+        buttonStack.appendChild(cancelButton);
+        buttonStack.appendChild(unloadButton);
 
         main.appendChild(stack);
+        main.appendChild(buttonStack);
 
         this.rootElement.appendChild(main);
         // const rows = [];
@@ -180,6 +184,28 @@ class TotemsClient {
                 square.style.border = "1px solid "+(state.ctx.currentPlayer == 0 ? "red" : "blue");
             }
         });
+        const stack = this.rootElement.querySelector(".stack");
+        const stackedPieces = this.rootElement.querySelectorAll(".stack-piece");
+        stackedPieces.forEach(piece => {
+            stack.removeChild(piece);
+        });
+        if(state.G.activeSquare !== null) {
+            for(let i = 0;i < state.G.activeSquare.stack.length;i++) {
+                let stackPiece = document.createElement("div");
+                stackPiece.className = "stack-piece";
+                stackPiece.dataset.id = i;
+                stackPiece.textContent = state.G.activeSquare.stack[i].type;
+                stackPiece.classList.add(
+                    "piece-"+state.G.activeSquare.stack[i].type,
+                    "piece-player"+state.G.activeSquare.stack[i].player
+                );
+                if(state.G.activeSquare.stack[i].player == state.ctx.currentPlayer) {
+                    stackPiece.classList.add("clickable-piece");
+                }
+                stack.appendChild(stackPiece);
+            }
+
+        }
     }
 }
 

@@ -29084,7 +29084,8 @@ function createStartingArray() {
       setup[i].stack.push({
         currentSquare: i,
         player: colorSetup[i],
-        type: boardSetup[i]
+        type: boardSetup[i],
+        valid: false
       });
       setup[i].stackHeight = heightMap.get(boardSetup[i]);
     }
@@ -29317,11 +29318,13 @@ function unmarkValidMoves(G) {
   }
 }
 
-function markValidPieces(G) {
+function markValidLoads(G) {
   let piece = movesMap.get(G.activePiece.type);
   validMovesBySteps(G, G.activePiece.currentSquare, piece.moves, G.squares[G.activePiece.currentSquare].stackHeight);
   G.squares[G.activePiece.currentSquare].valid = false;
 }
+
+function markValidPieces(G) {}
 
 const Totems = {
   setup: () => ({
@@ -29395,7 +29398,8 @@ const Totems = {
       //     currentPlayer: { stage: 'selectPiece' },
       //     others: { stage: 'examinePiece' }
       // });
-      unmarkValidMoves(G); // G.stage = "Select a piece";
+      unmarkValidMoves(G);
+      markValidPieces(G); // G.stage = "Select a piece";
       // ctx.events.setStage('selectPiece');
     },
     stages: {
@@ -29410,7 +29414,7 @@ const Totems = {
           loadPiece: (G, ctx) => {
             if (G.activePiece.type == "F") {
               unmarkValidMoves(G);
-              markValidPieces(G);
+              markValidLoads(G);
               G.activeSquare = G.squares[G.activePiece.currentSquare];
               G.activePiece = null;
               G.stage = "Select a piece to carry";
@@ -29468,6 +29472,7 @@ const Totems = {
 
             G.activePiece = null;
             unmarkValidMoves(G);
+            G.activeSquare = null;
             G.stage = "Select a piece"; // ctx.events.setStage('selectPiece');
 
             ctx.events.endTurn();
@@ -29493,6 +29498,7 @@ const Totems = {
             G.squares[destID].stack[G.squares[destID].stack.length - 1].currentSquare = destID;
             G.activePiece = null;
             unmarkValidMoves(G);
+            G.activeSquare = null;
             G.stage = "Select a piece";
             ctx.events.endTurn();
           },
@@ -29553,6 +29559,8 @@ class TotemsClient {
 
     let stack = document.createElement("div");
     stack.className = "stack";
+    let buttonStack = document.createElement("div");
+    buttonStack.className = "button-stack";
     let confirmButton = document.createElement("div");
     confirmButton.id = "confirm-button";
     confirmButton.className = "button";
@@ -29569,11 +29577,12 @@ class TotemsClient {
     unloadButton.id = "unload-button";
     unloadButton.className = "button";
     unloadButton.textContent = "Unload";
-    stack.appendChild(confirmButton);
-    stack.appendChild(carryButton);
-    stack.appendChild(cancelButton);
-    stack.appendChild(unloadButton);
+    buttonStack.appendChild(confirmButton);
+    buttonStack.appendChild(carryButton);
+    buttonStack.appendChild(cancelButton);
+    buttonStack.appendChild(unloadButton);
     main.appendChild(stack);
+    main.appendChild(buttonStack);
     this.rootElement.appendChild(main); // const rows = [];
     // for(let i = 0;i < 10;i++) {
     //     const squares = [];
@@ -29710,6 +29719,27 @@ class TotemsClient {
         square.style.border = "1px solid " + (state.ctx.currentPlayer == 0 ? "red" : "blue");
       }
     });
+    const stack = this.rootElement.querySelector(".stack");
+    const stackedPieces = this.rootElement.querySelectorAll(".stack-piece");
+    stackedPieces.forEach(piece => {
+      stack.removeChild(piece);
+    });
+
+    if (state.G.activeSquare !== null) {
+      for (let i = 0; i < state.G.activeSquare.stack.length; i++) {
+        let stackPiece = document.createElement("div");
+        stackPiece.className = "stack-piece";
+        stackPiece.dataset.id = i;
+        stackPiece.textContent = state.G.activeSquare.stack[i].type;
+        stackPiece.classList.add("piece-" + state.G.activeSquare.stack[i].type, "piece-player" + state.G.activeSquare.stack[i].player);
+
+        if (state.G.activeSquare.stack[i].player == state.ctx.currentPlayer) {
+          stackPiece.classList.add("clickable-piece");
+        }
+
+        stack.appendChild(stackPiece);
+      }
+    }
   }
 
 }
