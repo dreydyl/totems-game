@@ -38,19 +38,28 @@ class TotemsClient {
 
         let confirmButton = document.createElement("div");
         confirmButton.id = "confirm-button";
+        confirmButton.className = "button";
         confirmButton.textContent = "Confirm";
 
         let cancelButton = document.createElement("div");
         cancelButton.id = "cancel-button";
+        cancelButton.className = "button";
         cancelButton.textContent = "Cancel";
 
         let carryButton = document.createElement("div");
         carryButton.id = "carry-button";
+        carryButton.className = "button";
         carryButton.textContent = "Carry";
+
+        let unloadButton = document.createElement("div");
+        unloadButton.id = "unload-button";
+        unloadButton.className = "button";
+        unloadButton.textContent = "Unload";
 
         stack.appendChild(confirmButton);
         stack.appendChild(carryButton);
         stack.appendChild(cancelButton);
+        stack.appendChild(unloadButton);
 
         main.appendChild(stack);
 
@@ -97,6 +106,11 @@ class TotemsClient {
         };
         const carryButton = this.rootElement.querySelector('#carry-button');
         carryButton.onclick = handleCarryClick;
+        const handleUnloadClick = () => {
+            this.client.moves.unloadPiece();
+        };
+        const unloadButton = this.rootElement.querySelector('#unload-button');
+        unloadButton.onclick = handleUnloadClick;
     }
 
     update(state) {
@@ -106,12 +120,17 @@ class TotemsClient {
         cancelButton.style.display = "none";
         const carryButton = this.rootElement.querySelector('#carry-button');
         carryButton.style.display = "none";
+        const unloadButton = this.rootElement.querySelector('#unload-button');
+        unloadButton.style.display = "none";
         if (state.G.activePiece !== null && state.G.activePiece.player >= 0 && state.G.activeSquare !== null) {
             confirmButton.style.display = "block";
         }
         if (state.G.stage == "Select a space to move") {
             cancelButton.style.display = "block";
-            if(state.G.activePiece !== null && (state.G.activePiece.type == "W" || state.G.activePiece.type == "F")) {
+            if(state.G.activePiece !== null && state.G.activePiece.type == "F") {
+                carryButton.style.display = "block";
+            }
+            if(state.G.activePiece !== null && state.G.activePiece.type == "W" && state.G.squares[state.G.activePiece.currentSquare].stackHeight > 2) {
                 carryButton.style.display = "block";
             }
         }

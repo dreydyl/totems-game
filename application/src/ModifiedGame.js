@@ -134,7 +134,8 @@ const validMovesBySteps = (G, index, steps, height = null) => {
                     heightDifference = (index != G.activePiece.currentSquare ? G.squares[index].stackHeight :
                         getLevel(G.squares[index].stack, G.squares[index].stack.length - 1)) - G.squares[newIndex].stackHeight;
                 } else {
-                    heightDifference = height - getLevel(G.squares[newIndex], G.squares[newIndex].stack.length - 2);
+                    heightDifference = (index != G.activePiece.currentSquare ? G.squares[index].stackHeight :
+                        getLevel(G.squares[index].stack, G.squares[index].stack.length - 2)) - G.squares[newIndex].stackHeight;
                 }
                 if (G.activePiece.type == "W" || G.activePiece.type == "E") {
                     if (G.load !== null) {
@@ -325,8 +326,15 @@ export const Totems = {
                             G.stage = "Select a piece to carry";
                             ctx.events.setStage('carry');
                         } else if (G.activePiece.type == "W") {
-                            G.load = G.activeSquare.stack[G.activeSquare.stack.length - 2];
+                            let activeSquare = G.squares[G.activePiece.currentSquare];
+                            G.load = activeSquare.stack[activeSquare.stack.length - 2];
+                            if(!G.load) {
+                                G.load = null;
+                            }
                         }
+                    },
+                    unloadPiece: (G, ctx) => {
+                        G.load = null;
                     },
                     clickSquare: (G, ctx, id) => {
                         let clickedSquare = G.squares[id];

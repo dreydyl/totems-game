@@ -29188,7 +29188,7 @@ const validMovesBySteps = (G, index, steps, height = null) => {
         if (height !== null) {
           heightDifference = (index != G.activePiece.currentSquare ? G.squares[index].stackHeight : getLevel(G.squares[index].stack, G.squares[index].stack.length - 1)) - G.squares[newIndex].stackHeight;
         } else {
-          heightDifference = height - getLevel(G.squares[newIndex], G.squares[newIndex].stack.length - 2);
+          heightDifference = (index != G.activePiece.currentSquare ? G.squares[index].stackHeight : getLevel(G.squares[index].stack, G.squares[index].stack.length - 2)) - G.squares[newIndex].stackHeight;
         }
 
         if (G.activePiece.type == "W" || G.activePiece.type == "E") {
@@ -29416,8 +29416,16 @@ const Totems = {
               G.stage = "Select a piece to carry";
               ctx.events.setStage('carry');
             } else if (G.activePiece.type == "W") {
-              G.load = G.activeSquare.stack[G.activeSquare.stack.length - 2];
+              let activeSquare = G.squares[G.activePiece.currentSquare];
+              G.load = activeSquare.stack[activeSquare.stack.length - 2];
+
+              if (!G.load) {
+                G.load = null;
+              }
             }
+          },
+          unloadPiece: (G, ctx) => {
+            G.load = null;
           },
           clickSquare: (G, ctx, id) => {
             let clickedSquare = G.squares[id];
@@ -29547,16 +29555,24 @@ class TotemsClient {
     stack.className = "stack";
     let confirmButton = document.createElement("div");
     confirmButton.id = "confirm-button";
+    confirmButton.className = "button";
     confirmButton.textContent = "Confirm";
     let cancelButton = document.createElement("div");
     cancelButton.id = "cancel-button";
+    cancelButton.className = "button";
     cancelButton.textContent = "Cancel";
     let carryButton = document.createElement("div");
     carryButton.id = "carry-button";
+    carryButton.className = "button";
     carryButton.textContent = "Carry";
+    let unloadButton = document.createElement("div");
+    unloadButton.id = "unload-button";
+    unloadButton.className = "button";
+    unloadButton.textContent = "Unload";
     stack.appendChild(confirmButton);
     stack.appendChild(carryButton);
     stack.appendChild(cancelButton);
+    stack.appendChild(unloadButton);
     main.appendChild(stack);
     this.rootElement.appendChild(main); // const rows = [];
     // for(let i = 0;i < 10;i++) {
@@ -29606,6 +29622,13 @@ class TotemsClient {
 
     const carryButton = this.rootElement.querySelector('#carry-button');
     carryButton.onclick = handleCarryClick;
+
+    const handleUnloadClick = () => {
+      this.client.moves.unloadPiece();
+    };
+
+    const unloadButton = this.rootElement.querySelector('#unload-button');
+    unloadButton.onclick = handleUnloadClick;
   }
 
   update(state) {
@@ -29615,6 +29638,8 @@ class TotemsClient {
     cancelButton.style.display = "none";
     const carryButton = this.rootElement.querySelector('#carry-button');
     carryButton.style.display = "none";
+    const unloadButton = this.rootElement.querySelector('#unload-button');
+    unloadButton.style.display = "none";
 
     if (state.G.activePiece !== null && state.G.activePiece.player >= 0 && state.G.activeSquare !== null) {
       confirmButton.style.display = "block";
@@ -29623,7 +29648,11 @@ class TotemsClient {
     if (state.G.stage == "Select a space to move") {
       cancelButton.style.display = "block";
 
-      if (state.G.activePiece !== null && (state.G.activePiece.type == "W" || state.G.activePiece.type == "F")) {
+      if (state.G.activePiece !== null && state.G.activePiece.type == "F") {
+        carryButton.style.display = "block";
+      }
+
+      if (state.G.activePiece !== null && state.G.activePiece.type == "W" && state.G.squares[state.G.activePiece.currentSquare].stackHeight > 2) {
         carryButton.style.display = "block";
       }
     }
@@ -29720,7 +29749,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "49786" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "50297" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
