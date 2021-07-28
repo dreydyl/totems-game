@@ -1,6 +1,6 @@
 import { Client } from 'boardgame.io/client';
 import { Local } from 'boardgame.io/multiplayer';
-import { Totems } from './Game';
+import { Totems } from './ModifiedGame';
 
 class TotemsClient {
     // constructor(rootElement, { playerID }) {
@@ -24,7 +24,7 @@ class TotemsClient {
         let board = document.createElement("div");
         board.className = "board";
         let div;
-        for(let i = 0;i < 100;i++) {
+        for (let i = 0; i < 100; i++) {
             div = document.createElement("div");
             div.className = "square";
             div.dataset.id = i;
@@ -44,7 +44,12 @@ class TotemsClient {
         cancelButton.id = "cancel-button";
         cancelButton.textContent = "Cancel";
 
+        let carryButton = document.createElement("div");
+        carryButton.id = "carry-button";
+        carryButton.textContent = "Carry";
+
         stack.appendChild(confirmButton);
+        stack.appendChild(carryButton);
         stack.appendChild(cancelButton);
 
         main.appendChild(stack);
@@ -94,79 +99,52 @@ class TotemsClient {
         confirmButton.style.display = "none";
         const cancelButton = this.rootElement.querySelector('#cancel-button');
         cancelButton.style.display = "none";
-        if(state.G.activePiece.player >= 0) {
+        if (state.G.activePiece !== null && state.G.activePiece.player >= 0) {
             confirmButton.style.display = "block";
         }
-        if(state.G.stage == "Move piece") {
+        if (state.G.stage == "Select a space to move") {
             cancelButton.style.display = "block";
         }
         const squares = this.rootElement.querySelectorAll('.square');
-        // if(this.client.playerID == 0 && state.ctx.currentPlayer == 0) {
-        if(state.ctx.currentPlayer == 0) {
-            squares.forEach(square => {
-                const squareID = parseInt(square.dataset.id);
-                const squareValue = state.G.squares[squareID].pole[state.G.squares[squareID].pole.length-1].type;
-                const squareColor = state.G.squares[squareID].pole[state.G.squares[squareID].pole.length-1].player;
-                square.textContent = squareValue;
-                square.style.color = squareColor < 0 ? "#f0f0f0" : (squareColor == 0 ? "red" : "blue");
-                if(state.G.squares[squareID].side < 0) {
-                    if(state.G.activeSquare == squareID) {
-                        square.style.backgroundColor = "#80d072";
-                    } else {
-                        square.style.backgroundColor = "#797";
-                    }
-                } else if(state.G.squares[squareID].side == 0) {
-                    if(state.G.activeSquare == squareID) {
-                        square.style.backgroundColor = "#ff9292";
-                    } else {
-                        square.style.backgroundColor = "#999292";
-                    }
-                } else {
-                    if(state.G.activeSquare == squareID) {
-                        square.style.backgroundColor = "#9992f0";
-                    } else {
-                        square.style.backgroundColor = "#929299";
-                    }
-                }
-                if(state.G.squares[squareID].valid) {
-                    square.style.border = "1px solid white";
-                } else {
-                    square.style.border = "1px solid green";
-                }
-            });
-        // } else if(this.client.playerID == 1 && state.ctx.currentPlayer == 1) {
-        } else if(state.ctx.currentPlayer == 1) {
-            let oppSquares = [];
-            for(let i = 0;i < 100;i++) {
-                oppSquares.push(state.G.squares[99-i]);
+        squares.forEach(square => {
+            const squareID = parseInt(square.dataset.id);
+            const piece = state.G.squares[squareID].stack[state.G.squares[squareID].stack.length - 1];
+            let squareValue = "";
+            let squareColor = -1;
+            if(piece !== undefined) {
+                squareValue = piece.type;
+                squareColor = piece.player;
             }
-            squares.forEach(square => {
-                const squareID = parseInt(square.dataset.id);
-                const squareValue = state.G.squares[squareID].pole[state.G.squares[squareID].pole.length-1].type;
-                const squareColor = state.G.squares[squareID].pole[state.G.squares[squareID].pole.length-1].player;
-                square.textContent = squareValue;
-                square.style.color = squareColor < 0 ? "#f0f0f0" : (squareColor == 0 ? "red" : "blue");
-                if(state.G.squares[squareID].side < 0) {
-                    if(state.G.activeSquare == squareID) {
-                        square.style.backgroundColor = "#72d080";
-                    } else {
-                        square.style.backgroundColor = "#797";
-                    }
-                } else if(state.G.squares[squareID].side == 0) {
-                    if(state.G.activeSquare == squareID) {
-                        square.style.backgroundColor = "#f09299";
-                    } else {
-                        square.style.backgroundColor = "#999292";
-                    }
+            square.textContent = squareValue;
+            square.style.color = squareColor < 0 ? "#f0f0f0" : (squareColor == 0 ? "red" : "blue");
+            if (state.G.squares[squareID].side < 0) {
+                if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
+                    square.style.backgroundColor = "#80d072";
                 } else {
-                    if(state.G.activeSquare == squareID) {
-                        square.style.backgroundColor = "#9292ff";
-                    } else {
-                        square.style.backgroundColor = "#929299";
-                    }
+                    square.style.backgroundColor = "#797";
                 }
-            });
-        }
+            } else if (state.G.squares[squareID].side == 0) {
+                if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
+                    square.style.backgroundColor = "#ff9292";
+                } else {
+                    square.style.backgroundColor = "#999292";
+                }
+            } else {
+                if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
+                    square.style.backgroundColor = "#9992f0";
+                } else {
+                    square.style.backgroundColor = "#929299";
+                }
+            }
+            if (state.G.squares[squareID].valid) {
+                square.style.border = "1px solid white";
+            } else {
+                square.style.border = "1px solid green";
+            }
+            if(state.G.activeSquare !== null && state.G.activeSquare.id == squareID) {
+                square.style.border = "1px solid "+(state.ctx.currentPlayer == 0 ? "red" : "blue");
+            }
+        });
     }
 }
 

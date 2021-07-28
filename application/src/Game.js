@@ -29,8 +29,6 @@ function createStartingArray() {
         .map(() => ({
             pole: [],
             side: -1,
-            valid: false,
-            winning: false
         }));
     for (let i = 0; i < 100; i++) {
         setup[i].pole.push({
@@ -48,8 +46,6 @@ function createStartingArray() {
             setup[toIndex(redCoords)].side = 0;
         }
     }
-
-    //for() set players
 
     return setup;
 }
@@ -110,13 +106,14 @@ function markValidMovesByStep(G, index, heightInd, steps) {
                     let heightDifference = heightInd - (G.squares[newIndex].pole.length - 1);           //0,1,2,3,4 height = 5
                     if (heightDifference <= 1 && heightDifference >= -1) {                             //0,1,2 height = 3
                         G.squares[newIndex].valid = true;                                           //0,1,2,3 height = 4
+                        // steps--;
                         markValidMovesByStep(G, newIndex, G.squares[newIndex].pole.length, newSteps); //0,1,2,3 height = 3
                     }
                 }
             }
-            dx++;
+            // dx++;
         }
-        dy++;
+        // dy++;
     }
 }
 
@@ -213,12 +210,14 @@ export const Totems = {
                         //view totem pole
                         //if turn and if player == player, active piece
                         resetActivePiece(G);
+                        resetValidMoves(G);
                         let clickedSquare = G.squares[id];
                         G.activeSquare = id;
                         if (clickedSquare.pole.length > 0) {
                             let clickedPiece = clickedSquare.pole[clickedSquare.pole.length - 1];
                             if (clickedPiece.player == ctx.currentPlayer) {
                                 setActivePiece(G, ctx, id, clickedSquare.pole.length - 1, clickedPiece.type);
+                                markValidMoves(G, ctx);
                             }
                         }
                     },
@@ -239,12 +238,12 @@ export const Totems = {
                                 load.player = G.activeSquare.pole[G.activeSquare.pole.length - 1].player;
                             }
                             setActivePiece(G, ctx, G.activeSquare, clickedPiece.height, clickedPiece.type, load);
+                            markValidMoves(G, ctx);
                         } else {
                             resetActivePiece(G);
                         }
                     },
                     confirm: (G, ctx) => {
-                        markValidMoves(G, ctx);
                         ctx.events.setStage('movePiece');
                         G.stage = "Move piece";
                         return;
@@ -271,7 +270,6 @@ export const Totems = {
                         }
                     },
                     cancel: (G, ctx) => {
-                        resetValidMoves(G);
                         G.stage = "Select a piece";
                         ctx.events.setStage('selectPiece');
                     },
@@ -289,8 +287,10 @@ export const Totems = {
                                 G.squares[G.activeSquare].pole.push(load);
                             }
                         }
+
                         resetActivePiece(G);
                         resetValidMoves(G);
+                        G.stage = "Select a piece";
                         ctx.events.endTurn();
                     }
                 }
