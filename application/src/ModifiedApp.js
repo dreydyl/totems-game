@@ -92,6 +92,11 @@ class TotemsClient {
         };
         const cancelButton = this.rootElement.querySelector('#cancel-button');
         cancelButton.onclick = handleCancelClick;
+        const handleCarryClick = () => {
+            this.client.moves.loadPiece();
+        };
+        const carryButton = this.rootElement.querySelector('#carry-button');
+        carryButton.onclick = handleCarryClick;
     }
 
     update(state) {
@@ -99,11 +104,22 @@ class TotemsClient {
         confirmButton.style.display = "none";
         const cancelButton = this.rootElement.querySelector('#cancel-button');
         cancelButton.style.display = "none";
-        if (state.G.activePiece !== null && state.G.activePiece.player >= 0) {
+        const carryButton = this.rootElement.querySelector('#carry-button');
+        carryButton.style.display = "none";
+        if (state.G.activePiece !== null && state.G.activePiece.player >= 0 && state.G.activeSquare !== null) {
             confirmButton.style.display = "block";
         }
         if (state.G.stage == "Select a space to move") {
             cancelButton.style.display = "block";
+            if(state.G.activePiece !== null && (state.G.activePiece.type == "W" || state.G.activePiece.type == "F")) {
+                carryButton.style.display = "block";
+            }
+        }
+        if(state.G.stage == "Select a piece to carry") {
+            cancelButton.style.display = "block";
+            if(state.G.activePiece !== null) {
+                confirmButton.style.display = "block";
+            }
         }
         const squares = this.rootElement.querySelectorAll('.square');
         squares.forEach(square => {

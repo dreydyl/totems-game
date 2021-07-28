@@ -29165,7 +29165,7 @@ function onBoard(coords) {
   return coords.x >= 0 && coords.x < 10 && coords.y >= 0 && coords.y < 10;
 }
 
-const validMovesBySteps = (G, index, steps) => {
+const validMovesBySteps = (G, index, steps, height = null) => {
   if (steps <= 0) {
     return;
   }
@@ -29183,17 +29183,28 @@ const validMovesBySteps = (G, index, steps) => {
 
       if (Math.abs(dy) != Math.abs(dx) && onBoard(tempCoords)) {
         let newIndex = toIndex(tempCoords);
-        let heightDifference = (index != G.activePiece.currentSquare ? getHeight(G.squares[index].stack) : getLevel(G.squares[index].stack, G.squares[index].stack.length - 1)) - getHeight(G.squares[newIndex].stack);
+        let heightDifference;
+
+        if (height !== null) {
+          heightDifference = (index != G.activePiece.currentSquare ? G.squares[index].stackHeight : getLevel(G.squares[index].stack, G.squares[index].stack.length - 1)) - G.squares[newIndex].stackHeight;
+        } else {
+          heightDifference = height - getLevel(G.squares[newIndex], G.squares[newIndex].stack.length - 2);
+        }
 
         if (G.activePiece.type == "W" || G.activePiece.type == "E") {
           if (G.load !== null) {
-            heightDifference = (index != G.activePiece.currentSquare ? getHeight(G.squares[index].stack) : getLevel(G.squares[index].stack, G.squares[index].stack.length - 2)) - getHeight(G.squares[newIndex].stack);
+            heightDifference = (index != G.activePiece.currentSquare ? G.squares[index].stackHeight : getLevel(G.squares[index].stack, G.squares[index].stack.length - 2)) - G.squares[newIndex].stackHeight;
           }
         }
 
         if (heightDifference <= 1 && heightDifference >= -1) {
+          if (height !== null) {
+            if (G.squares[newIndex].stackHeight <= 0) return;
+            height += heightDifference;
+          }
+
           G.squares[newIndex].valid = true;
-          validMovesBySteps(G, newIndex, newSteps);
+          validMovesBySteps(G, newIndex, newSteps, height);
         }
       }
     }
@@ -29234,16 +29245,22 @@ const validMovesByCharge = (G, index, moves) => {
 
     for (let j = 0; j < 3; j++) {
       let dx = j - 1;
+      let brokenPath = false;
 
       for (let k = 0; k < moves; k++) {
+        if (brokenPath) break;
         let dist = k + 1;
         tempCoords = offset(coords, dx * dist, dy * dist);
 
         if (Math.abs(dy) != Math.abs(dx) && onBoard(tempCoords)) {
           let newIndex = toIndex(tempCoords);
-          G.squares[newIndex].valid = true;
-        } else {
-          break;
+          let heightDifference = (index != G.activePiece.currentSquare ? G.squares[index].stackHeight : getLevel(G.squares[index].stack, G.squares[index].stack.length - 1)) - G.squares[newIndex].stackHeight;
+
+          if (heightDifference <= 1 && heightDifference >= -1) {
+            G.squares[newIndex].valid = true;
+          } else {
+            brokenPath = true;
+          }
         }
       }
     }
@@ -29300,6 +29317,12 @@ function unmarkValidMoves(G) {
   }
 }
 
+function markValidPieces(G) {
+  let piece = movesMap.get(G.activePiece.type);
+  validMovesBySteps(G, G.activePiece.currentSquare, piece.moves, G.squares[G.activePiece.currentSquare].stackHeight);
+  G.squares[G.activePiece.currentSquare].valid = false;
+}
+
 const Totems = {
   setup: () => ({
     squares: createStartingArray(),
@@ -29353,8 +29376,8 @@ const Totems = {
           }
 
           if (clickedPiece.type == "F") {
-            G.stage = "Select a piece to carry";
-            ctx.setStage('carry');
+            G.stage = "Select a square to move load";
+            ctx.setStage('moveLoad');
           }
         }
       }
@@ -29382,57 +29405,16 @@ const Totems = {
           clickPiece: (G, ctx, index) => {}
         }
       },
-      // selectPiece: {
-      //     moves: {
-      //         clickSquare: (G, ctx, id) => {
-      //             G.activePiece = null;
-      //             unmarkValidMoves(G);
-      //             let clickedSquare = G.squares[id];
-      //             G.activeSquare = id;
-      //             if(clickedSquare.stack.length > 0) {
-      //                 let clickedPiece = clickedSquare.stack[clickedSquare.stack.length -1];
-      //                 if(clickedPiece.player == ctx.currentPlayer) {
-      //                     G.activePiece = clickedPiece;
-      //                     markValidMoves(G);
-      //                 }
-      //             }
-      //         },
-      //         clickPiece: (G, ctx, index) => {
-      //             G.activePiece = null;
-      //             unmarkValidMoves(G);
-      //             let clickedPiece = G.activeSquare.stack[index];
-      //             if(clickedPiece.player == ctx.currentPlayer) {
-      //                 if(index == G.activeSquare.stack.length-1) {
-      //                     G.activePiece = clickedPiece;
-      //                     markValidMoves(G);
-      //                 } else if(index == G.activeSquare.stack.length-2) {
-      //                     if(clickedPiece.type == "E" || clickedPiece.type == "F") {
-      //                         G.activePiece = clickedPiece;
-      //                         G.load = G.activePiece.stack[index+1];
-      //                         markValidMoves(G);
-      //                     }
-      //                     if(clickedPiece.type == "F") {
-      //                         G.stage = "Select a piece to carry";
-      //                         ctx.setStage('carry');
-      //                     }
-      //                 }
-      //             }
-      //         },
-      //         confirm: (G, ctx) => {
-      //             G.activeSquare = null;
-      //             G.stage = "Select a space to move";
-      //             ctx.events.setStage('movePiece');
-      //             return;
-      //         }
-      //     }
-      // },
       movePiece: {
         moves: {
           loadPiece: (G, ctx) => {
             if (G.activePiece.type == "F") {
-              //markValidPieces
+              unmarkValidMoves(G);
+              markValidPieces(G);
+              G.activeSquare = G.squares[G.activePiece.currentSquare];
+              G.activePiece = null;
               G.stage = "Select a piece to carry";
-              ctx.setStage('carry');
+              ctx.events.setStage('carry');
             } else if (G.activePiece.type == "W") {
               G.load = G.activeSquare.stack[G.activeSquare.stack.length - 2];
             }
@@ -29485,8 +29467,37 @@ const Totems = {
         }
       },
       carry: {
-        moves: {}
-      }
+        moves: {
+          clickSquare: (G, ctx, id) => {
+            let clickedSquare = G.squares[id];
+
+            if (clickedSquare.valid) {
+              G.activePiece = clickedSquare.stack[clickedSquare.stack.length - 1];
+            }
+          },
+          confirm: (G, ctx) => {
+            let destID = G.activeSquare.id;
+            let initialID = G.activePiece.currentSquare;
+            G.squares[destID].stack.push(G.activePiece);
+            G.squares[destID].stackHeight += heightMap.get(G.activePiece.type);
+            G.squares[initialID].stack.pop();
+            G.squares[initialID].stackHeight -= heightMap.get(G.activePiece.type);
+            G.squares[destID].stack[G.squares[destID].stack.length - 1].currentSquare = destID;
+            G.activePiece = null;
+            unmarkValidMoves(G);
+            G.stage = "Select a piece";
+            ctx.events.endTurn();
+          },
+          cancel: (G, ctx) => {
+            G.activePiece = G.activeSquare.stack[G.activeSquare.stack.length - 1];
+            markValidMoves(G);
+            G.activeSquare = null;
+            G.stage = "Select a space to move";
+            ctx.events.setStage('movePiece');
+          }
+        }
+      },
+      moveLoad: {}
     }
   }
 };
@@ -29588,6 +29599,13 @@ class TotemsClient {
 
     const cancelButton = this.rootElement.querySelector('#cancel-button');
     cancelButton.onclick = handleCancelClick;
+
+    const handleCarryClick = () => {
+      this.client.moves.loadPiece();
+    };
+
+    const carryButton = this.rootElement.querySelector('#carry-button');
+    carryButton.onclick = handleCarryClick;
   }
 
   update(state) {
@@ -29595,13 +29613,27 @@ class TotemsClient {
     confirmButton.style.display = "none";
     const cancelButton = this.rootElement.querySelector('#cancel-button');
     cancelButton.style.display = "none";
+    const carryButton = this.rootElement.querySelector('#carry-button');
+    carryButton.style.display = "none";
 
-    if (state.G.activePiece !== null && state.G.activePiece.player >= 0) {
+    if (state.G.activePiece !== null && state.G.activePiece.player >= 0 && state.G.activeSquare !== null) {
       confirmButton.style.display = "block";
     }
 
     if (state.G.stage == "Select a space to move") {
       cancelButton.style.display = "block";
+
+      if (state.G.activePiece !== null && (state.G.activePiece.type == "W" || state.G.activePiece.type == "F")) {
+        carryButton.style.display = "block";
+      }
+    }
+
+    if (state.G.stage == "Select a piece to carry") {
+      cancelButton.style.display = "block";
+
+      if (state.G.activePiece !== null) {
+        confirmButton.style.display = "block";
+      }
     }
 
     const squares = this.rootElement.querySelectorAll('.square');
@@ -29688,7 +29720,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "65278" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "49786" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
