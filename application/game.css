@@ -9,25 +9,97 @@ body {
 
 .board {
     display: grid;
-    grid-template-columns: repeat(10, 50px);
-    column-gap: 0;
+    grid-template-columns: repeat(10, 50.5px);
+    column-gap: 1.5px;
 }
 
 .square {
-    border: 1px solid green;
     width: 50px;
     height: 50px;
     line-height: 50px;
     text-align: center;
 }
 .square:hover {
-    background-color: #f0f099;
+    cursor: pointer;
+}
+
+.square-side0 {
+    background-color: #853435;
+    border: 1px solid #461116;
+    border-top-color: #772830;
+    border-left-color: #772830;
+}
+.square-side0:hover {
+    /* background-color: grey; */
+}
+.square-side1 {
+    background-color: #445b89;
+    border: 1px solid #0b0b50;
+    border-top-color: #36364e;
+    border-left-color: #36364e;
+}
+.square-side-1 {
+    background-color: #354d2e;
+    border: 1px solid #1b3115;
+}
+
+.active-square0 {
+    border-color: white;
+}
+.active-square1 {
+    border-color: white;
+}
+
+.valid-square0 {
+    border-color: red;
+}
+
+.valid-square1 {
+    border-color: #00ccff;
+}
+
+.square-player0 {
+
+}
+.square-player1 {
+
+}
+.square-player-1 {
+
+}
+
+.top-piece {
+    display: none;
+    background-color: grey;
+    border: 2px solid #606060;
+    color: #202020;
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin: 3px;
+    text-align: center;
+    vertical-align: middle;
+}
+.top-piece-player0 {
+    background-color: #d39292;
+    border-color: #6e1315;
+    color: #a00d10;
+}
+.top-piece-player1 {
+    background-color: #91a4d1;
+    border-color: #092864;
+    color: #1044ad;
+}
+.top-piece-tree {
+    background-color: #046804;
+    border-color: #0a360a;
+    color: #062b06;
 }
 
 .stack {
     display: flex;
     flex-flow: column-reverse nowrap;
-    /* grid-template-columns: repeat(1, 52px); */
 }
 
 .button-stack {
@@ -35,14 +107,14 @@ body {
     flex-flow: column-reverse nowrap;
 }
 
-#cancel-button {
+#cancel-button, #unload-button {
     display: block;
     background-color: #00000040;
     color: #800;
     border: 1px solid #800;
     border-radius: 2px;
 }
-#cancel-button:hover {
+#cancel-button:hover, #unload-button:hover {
     color: #000;
     background-color: #800;
 }
@@ -57,6 +129,7 @@ body {
 .button:hover {
     color: #000;
     background-color: green;
+    cursor: pointer;
 }
 
 .stack-piece {
@@ -68,13 +141,33 @@ body {
     text-align: center;
     font-size: 2em;
 }
-.stack-piece:hover {
-    border-color: white;
-    color: white;
+
+.piece-player0 {
+    background-color: #b00;
+}
+.piece-player0:hover {
+    border-color: #f44;
+    color: #f44;
+}
+.piece-player1 {
+    background-color: #00b;
+}
+.piece-player1:hover {
+    border-color: #34b;
+    color: #34b;
+}
+.piece-player-1:hover {
+    border-color: #3b4;
+    color: #3b4;
 }
 
 .clickable-piece:hover {
     cursor: pointer;
+}
+
+.selected-piece {
+    border-color: white;
+    color: white;
 }
 
 .piece-C,.piece-W,.piece-E,.piece-T {
@@ -82,11 +175,4 @@ body {
 }
 .piece-H {
     height: 300px;
-}
-
-.piece-player0 {
-    background-color: red;
-}
-.piece-player1 {
-    background-color: blue;
 }

@@ -24,10 +24,15 @@ class TotemsClient {
         let board = document.createElement("div");
         board.className = "board";
         let div;
+        let topPiece;
         for (let i = 0; i < 100; i++) {
             div = document.createElement("div");
             div.className = "square";
             div.dataset.id = i;
+            topPiece = document.createElement("div");
+            topPiece.className = "top-piece";
+            topPiece.dataset.id = i;
+            div.appendChild(topPiece);
 
             board.appendChild(div);
         }
@@ -61,29 +66,13 @@ class TotemsClient {
 
         buttonStack.appendChild(confirmButton);
         buttonStack.appendChild(carryButton);
-        buttonStack.appendChild(cancelButton);
         buttonStack.appendChild(unloadButton);
+        buttonStack.appendChild(cancelButton);
 
         main.appendChild(stack);
         main.appendChild(buttonStack);
 
         this.rootElement.appendChild(main);
-        // const rows = [];
-        // for(let i = 0;i < 10;i++) {
-        //     const squares = [];
-        //     for(let j = 0;j < 10;j++) {
-        //         const id = 10 * i + j;
-        //         div = document.createElement("div");
-        //         div.className = "square";
-        //         div.dataset.id = id;
-        //         squares.push(`<td class ="square" data-id="${id}"><td>`);
-        //     }
-        //     rows.push(`<tr class="board">${squares.join('')}</tr>`);
-        // }
-
-        // this.rootElement.innerHTML = `
-        //     <table class="board">${rows.join('')}<table>
-        // `;
     }
 
     attachListeners() {
@@ -117,6 +106,18 @@ class TotemsClient {
         unloadButton.onclick = handleUnloadClick;
     }
 
+    updateListeners() {
+        const handlePieceClick = event => {
+            const index = parseInt(event.target.dataset.id);
+            console.log("Piece at index " + index + " clicked");
+            this.client.moves.clickPiece(index);
+        };
+        const pieces = this.rootElement.querySelectorAll('.stack-piece');
+        pieces.forEach(piece => {
+            piece.onclick = handlePieceClick;
+        });
+    }
+
     update(state) {
         const confirmButton = this.rootElement.querySelector('#confirm-button');
         confirmButton.style.display = "none";
@@ -131,80 +132,123 @@ class TotemsClient {
         }
         if (state.G.stage == "Select a space to move") {
             cancelButton.style.display = "block";
-            if(state.G.activePiece !== null && state.G.activePiece.type == "F") {
-                carryButton.style.display = "block";
-            }
-            if(state.G.activePiece !== null && state.G.activePiece.type == "W" && state.G.squares[state.G.activePiece.currentSquare].stackHeight > 2) {
-                carryButton.style.display = "block";
+            if (state.G.load === null) {
+                if (state.G.activePiece !== null && state.G.activePiece.type == "F") {
+                    carryButton.style.display = "block";
+                }
+                if (state.G.activePiece !== null && state.G.activePiece.type == "W" && state.G.squares[state.G.activePiece.currentSquare].stackHeight > 2) {
+                    carryButton.style.display = "block";
+                }
             }
         }
-        if(state.G.stage == "Select a piece to carry") {
+        if (state.G.stage == "Select a piece to carry") {
             cancelButton.style.display = "block";
-            if(state.G.activePiece !== null) {
+            if (state.G.activePiece !== null) {
                 confirmButton.style.display = "block";
             }
         }
+        if (state.G.load !== null && state.G.activePiece.type == "W") {
+            unloadButton.style.display = "block";
+        }
+
         const squares = this.rootElement.querySelectorAll('.square');
         squares.forEach(square => {
             const squareID = parseInt(square.dataset.id);
             const piece = state.G.squares[squareID].stack[state.G.squares[squareID].stack.length - 1];
             let squareValue = "";
             let squareColor = -1;
-            if(piece !== undefined) {
+            if (piece !== undefined) {
                 squareValue = piece.type;
                 squareColor = piece.player;
             }
-            square.textContent = squareValue;
-            square.style.color = squareColor < 0 ? "#f0f0f0" : (squareColor == 0 ? "red" : "blue");
-            if (state.G.squares[squareID].side < 0) {
-                if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
-                    square.style.backgroundColor = "#80d072";
-                } else {
-                    square.style.backgroundColor = "#797";
-                }
-            } else if (state.G.squares[squareID].side == 0) {
-                if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
-                    square.style.backgroundColor = "#ff9292";
-                } else {
-                    square.style.backgroundColor = "#999292";
-                }
-            } else {
-                if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
-                    square.style.backgroundColor = "#9992f0";
-                } else {
-                    square.style.backgroundColor = "#929299";
-                }
-            }
+            // square.textContent = squareValue;
+            square.classList.add(
+                "square-side" + state.G.squares[squareID].side
+            )
+            // if (state.G.squares[squareID].side < 0) {
+            //     if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
+            //         square.style.backgroundColor = "#80d072";
+            //     } else {
+            //         square.style.backgroundColor = "#5a5";
+            //     }
+            // } else if (state.G.squares[squareID].side == 0) {
+            //     if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
+            //         square.style.backgroundColor = "#ff9292";
+            //     } else {
+            //         square.style.backgroundColor = "#804050";
+            //     }
+            // } else {
+            //     if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
+            //         square.style.backgroundColor = "#9992f0";
+            //     } else {
+            //         square.style.backgroundColor = "#4c44c5";
+            //     }
+            // }
             if (state.G.squares[squareID].valid) {
-                square.style.border = "1px solid white";
+                square.classList.add("valid-square" + state.ctx.currentPlayer);
             } else {
-                square.style.border = "1px solid green";
+                square.classList.remove("valid-square0");
+                square.classList.remove("valid-square1");
             }
-            if(state.G.activeSquare !== null && state.G.activeSquare.id == squareID) {
-                square.style.border = "1px solid "+(state.ctx.currentPlayer == 0 ? "red" : "blue");
+            if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
+                square.classList.add("active-square" + state.ctx.currentPlayer);
+            } else {
+                square.classList.remove("active-square0");
+                square.classList.remove("active-square1");
             }
         });
+
+        const boardPieces = this.rootElement.querySelectorAll('.top-piece');
+        boardPieces.forEach(piece => {
+            piece.style.display = "none";
+            let stack = state.G.squares[piece.dataset.id].stack;
+            if (stack.length > 0) {
+                piece.style.display = "block";
+                for (let i = 0; i < 3; i++) {
+                    piece.classList.remove(
+                        "top-piece-player" + (i - 1)
+                    )
+                }
+                piece.classList.add(
+                    "top-piece-player" + stack[stack.length - 1].player
+                );
+                if (stack[stack.length - 1].type == "T") {
+                    piece.classList.add(
+                        "top-piece-tree"
+                    );
+                } else {
+                    piece.classList.remove(
+                        "top-piece-tree"
+                    );
+                }
+                piece.textContent = stack[stack.length - 1].type;
+            }
+        })
+
         const stack = this.rootElement.querySelector(".stack");
         const stackedPieces = this.rootElement.querySelectorAll(".stack-piece");
         stackedPieces.forEach(piece => {
             stack.removeChild(piece);
         });
-        if(state.G.activeSquare !== null) {
-            for(let i = 0;i < state.G.activeSquare.stack.length;i++) {
+        if (state.G.activeSquare !== null) {
+            for (let i = 0; i < state.G.activeSquare.stack.length; i++) {
                 let stackPiece = document.createElement("div");
                 stackPiece.className = "stack-piece";
                 stackPiece.dataset.id = i;
                 stackPiece.textContent = state.G.activeSquare.stack[i].type;
                 stackPiece.classList.add(
-                    "piece-"+state.G.activeSquare.stack[i].type,
-                    "piece-player"+state.G.activeSquare.stack[i].player
+                    "piece-" + state.G.activeSquare.stack[i].type,
+                    "piece-player" + state.G.activeSquare.stack[i].player
                 );
-                if(state.G.activeSquare.stack[i].player == state.ctx.currentPlayer) {
+                if (state.G.activeSquare.stack[i].player == state.ctx.currentPlayer) {
                     stackPiece.classList.add("clickable-piece");
+                }
+                if (state.G.activeSquare.stack[i] == state.G.activePiece) {
+                    stackPiece.classList.add("selected-piece");
                 }
                 stack.appendChild(stackPiece);
             }
-
+            this.updateListeners();
         }
     }
 }

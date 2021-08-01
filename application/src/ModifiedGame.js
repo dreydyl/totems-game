@@ -122,14 +122,14 @@ const validMovesBySteps = (G, index, steps, height = null) => {
     }
     let newSteps = steps - 1;
     let coords = toCoordinates(index);
-    let tempCoords;
+    let newCoords;
     for (let i = 0; i < 3; i++) {
         let dy = i - 1;
         for (let j = 0; j < 3; j++) {
             let dx = j - 1;
-            tempCoords = offset(coords, dx, dy);
-            if (Math.abs(dy) != Math.abs(dx) && onBoard(tempCoords)) {
-                let newIndex = toIndex(tempCoords);
+            newCoords = offset(coords, dx, dy);
+            if (Math.abs(dy) != Math.abs(dx) && onBoard(newCoords)) {
+                let newIndex = toIndex(newCoords);
                 let heightDifference;
                 if (height !== null) {
                     heightDifference = (index != G.activePiece.currentSquare ? G.squares[index].stackHeight :
@@ -162,14 +162,14 @@ const validMovesByFlight = (G, index, moves) => {
     }
     let newMoves = moves - 1;
     let coords = toCoordinates(index);
-    let tempCoords;
+    let newCoords;
     for (let i = 0; i < 3; i++) {
         let dy = i - 1;
         for (let j = 0; j < 3; j++) {
             let dx = j - 1;
-            tempCoords = offset(coords, dx, dy);
-            if (Math.abs(dy) != Math.abs(dx) && onBoard(tempCoords)) {
-                let newIndex = toIndex(tempCoords);
+            newCoords = offset(coords, dx, dy);
+            if (Math.abs(dy) != Math.abs(dx) && onBoard(newCoords)) {
+                let newIndex = toIndex(newCoords);
                 G.squares[newIndex].valid = true;
                 validMovesByFlight(G, newIndex, newMoves);
             }
@@ -178,22 +178,27 @@ const validMovesByFlight = (G, index, moves) => {
 };
 const validMovesByCharge = (G, index, moves) => {
     let coords = toCoordinates(index);
-    let tempCoords;
+    let newCoords;
+    let lastIndex;
+    let lastCoords;
     for (let i = 0; i < 3; i++) {
         let dy = i - 1;
         for (let j = 0; j < 3; j++) {
             let dx = j - 1;
             let brokenPath = false;
+            lastIndex = index;
             for (let k = 0; k < moves; k++) {
                 if (brokenPath) break;
+                lastCoords = toCoordinates(lastIndex);
                 let dist = k + 1;
-                tempCoords = offset(coords, dx * dist, dy * dist);
-                if (Math.abs(dy) != Math.abs(dx) && onBoard(tempCoords)) {
-                    let newIndex = toIndex(tempCoords);
-                    let heightDifference = (index != G.activePiece.currentSquare ? G.squares[index].stackHeight :
-                        getLevel(G.squares[index].stack, G.squares[index].stack.length - 1)) - G.squares[newIndex].stackHeight;
+                newCoords = offset(lastCoords, dx, dy);
+                if (Math.abs(dy) != Math.abs(dx) && onBoard(newCoords)) {
+                    let newIndex = toIndex(newCoords);
+                    let heightDifference = (lastIndex != G.activePiece.currentSquare ? G.squares[lastIndex].stackHeight :
+                        getLevel(G.squares[lastIndex].stack, G.squares[lastIndex].stack.length - 1)) - G.squares[newIndex].stackHeight;
                     if (heightDifference <= 1 && heightDifference >= -1) {
                         G.squares[newIndex].valid = true;
+                        lastIndex = newIndex;
                     } else {
                         brokenPath = true;
                     }
@@ -216,7 +221,7 @@ movesMap.set("H", { movement: validMovesBySteps, moves: 2 });
 function markValidMoves(G) {
     let piece = movesMap.get(G.activePiece.type);
     piece.movement(G, G.activePiece.currentSquare, piece.moves);
-    G.activeSquare.valid = false;
+    G.squares[G.activePiece.currentSquare].valid = false;
 }
 
 function unmarkValidMoves(G) {
@@ -271,22 +276,25 @@ export const Totems = {
             }
         },
         clickPiece: (G, ctx, index) => {
-            G.activePiece = null;
-            unmarkValidMoves(G);
+            G.load = null;
             let clickedPiece = G.activeSquare.stack[index];
             if (clickedPiece.player == ctx.currentPlayer) {
                 if (index == G.activeSquare.stack.length - 1) {
+                    G.activePiece = null;
+                    unmarkValidMoves(G);
                     G.activePiece = clickedPiece;
                     markValidMoves(G);
                 } else if (index == G.activeSquare.stack.length - 2) {
                     if (clickedPiece.type == "E" || clickedPiece.type == "F") {
+                        G.activePiece = null;
+                        unmarkValidMoves(G);
                         G.activePiece = clickedPiece;
-                        G.load = G.activePiece.stack[index + 1];
+                        G.load = G.activeSquare.stack[index + 1];
                         markValidMoves(G);
                     }
                     if (clickedPiece.type == "F") {
                         G.stage = "Select a square to move load";
-                        ctx.setStage('moveLoad');
+                        ctx.events.setStage('moveLoad');
                     }
                 }
             }
@@ -349,6 +357,7 @@ export const Totems = {
                         }
                     },
                     cancel: (G, ctx) => {
+                        G.load = null;
                         G.activeSquare = G.squares[G.activePiece.currentSquare];
                         G.stage = "Select a piece";
                         ctx.events.endStage();
@@ -361,8 +370,13 @@ export const Totems = {
                             G.squares[destID].stack.push(G.load);
                             G.squares[destID].stackHeight += heightMap.get(G.load.type);
                         }
-                        G.squares[destID].stack.push(G.activePiece);
-                        G.squares[destID].stackHeight += heightMap.get(G.activePiece.type);
+                        if(G.activePiece.type == "F" && G.load !== null) {
+                            G.squares[destID].stack.push(G.load);
+                            G.squares[destID].stackHeight += heightMap.get(G.load.type);
+                        } else {
+                            G.squares[destID].stack.push(G.activePiece);
+                            G.squares[destID].stackHeight += heightMap.get(G.activePiece.type);
+                        }
                         if (G.activePiece.type == "E" && G.load !== null) {
                             G.squares[destID].stack.push(G.load);
                             G.squares[destID].stackHeight += heightMap.get(G.load.type);
@@ -371,11 +385,12 @@ export const Totems = {
                         G.squares[initialID].stack.pop();
                         G.squares[initialID].stackHeight -= heightMap.get(G.activePiece.type);
                         G.squares[destID].stack[G.squares[destID].stack.length - 1].currentSquare = destID;
-                        if (G.load !== null && (G.activePiece.type == "W" || G.activePiece.type == "W")) {
+                        if (G.load !== null && (G.activePiece.type == "W" || G.activePiece.type == "E")) {
                             G.squares[initialID].stack.pop();
                             G.squares[initialID].stackHeight -= heightMap.get(G.activePiece.type);
                             G.squares[destID].stack[G.squares[destID].stack.length - 2].currentSquare = destID;
                         }
+                        G.load = null;
                         G.activePiece = null;
                         unmarkValidMoves(G);
                         G.activeSquare = null;
@@ -423,5 +438,14 @@ export const Totems = {
 
             }
         }
+    },
+
+    endIf: (G, ctx) => {
+        // if(isVictory(G)) {
+        //     return { winner: ctx.currentPlayer };
+        // }
+        // if(isDraw(G)) {
+        //     return { draw: true };
+        // }
     }
 };

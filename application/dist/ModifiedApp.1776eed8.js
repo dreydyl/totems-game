@@ -29173,17 +29173,17 @@ const validMovesBySteps = (G, index, steps, height = null) => {
 
   let newSteps = steps - 1;
   let coords = toCoordinates(index);
-  let tempCoords;
+  let newCoords;
 
   for (let i = 0; i < 3; i++) {
     let dy = i - 1;
 
     for (let j = 0; j < 3; j++) {
       let dx = j - 1;
-      tempCoords = offset(coords, dx, dy);
+      newCoords = offset(coords, dx, dy);
 
-      if (Math.abs(dy) != Math.abs(dx) && onBoard(tempCoords)) {
-        let newIndex = toIndex(tempCoords);
+      if (Math.abs(dy) != Math.abs(dx) && onBoard(newCoords)) {
+        let newIndex = toIndex(newCoords);
         let heightDifference;
 
         if (height !== null) {
@@ -29219,17 +29219,17 @@ const validMovesByFlight = (G, index, moves) => {
 
   let newMoves = moves - 1;
   let coords = toCoordinates(index);
-  let tempCoords;
+  let newCoords;
 
   for (let i = 0; i < 3; i++) {
     let dy = i - 1;
 
     for (let j = 0; j < 3; j++) {
       let dx = j - 1;
-      tempCoords = offset(coords, dx, dy);
+      newCoords = offset(coords, dx, dy);
 
-      if (Math.abs(dy) != Math.abs(dx) && onBoard(tempCoords)) {
-        let newIndex = toIndex(tempCoords);
+      if (Math.abs(dy) != Math.abs(dx) && onBoard(newCoords)) {
+        let newIndex = toIndex(newCoords);
         G.squares[newIndex].valid = true;
         validMovesByFlight(G, newIndex, newMoves);
       }
@@ -29239,7 +29239,9 @@ const validMovesByFlight = (G, index, moves) => {
 
 const validMovesByCharge = (G, index, moves) => {
   let coords = toCoordinates(index);
-  let tempCoords;
+  let newCoords;
+  let lastIndex;
+  let lastCoords;
 
   for (let i = 0; i < 3; i++) {
     let dy = i - 1;
@@ -29247,18 +29249,21 @@ const validMovesByCharge = (G, index, moves) => {
     for (let j = 0; j < 3; j++) {
       let dx = j - 1;
       let brokenPath = false;
+      lastIndex = index;
 
       for (let k = 0; k < moves; k++) {
         if (brokenPath) break;
+        lastCoords = toCoordinates(lastIndex);
         let dist = k + 1;
-        tempCoords = offset(coords, dx * dist, dy * dist);
+        newCoords = offset(lastCoords, dx, dy);
 
-        if (Math.abs(dy) != Math.abs(dx) && onBoard(tempCoords)) {
-          let newIndex = toIndex(tempCoords);
-          let heightDifference = (index != G.activePiece.currentSquare ? G.squares[index].stackHeight : getLevel(G.squares[index].stack, G.squares[index].stack.length - 1)) - G.squares[newIndex].stackHeight;
+        if (Math.abs(dy) != Math.abs(dx) && onBoard(newCoords)) {
+          let newIndex = toIndex(newCoords);
+          let heightDifference = (lastIndex != G.activePiece.currentSquare ? G.squares[lastIndex].stackHeight : getLevel(G.squares[lastIndex].stack, G.squares[lastIndex].stack.length - 1)) - G.squares[newIndex].stackHeight;
 
           if (heightDifference <= 1 && heightDifference >= -1) {
             G.squares[newIndex].valid = true;
+            lastIndex = newIndex;
           } else {
             brokenPath = true;
           }
@@ -29309,7 +29314,7 @@ movesMap.set("H", {
 function markValidMoves(G) {
   let piece = movesMap.get(G.activePiece.type);
   piece.movement(G, G.activePiece.currentSquare, piece.moves);
-  G.activeSquare.valid = false;
+  G.squares[G.activePiece.currentSquare].valid = false;
 }
 
 function unmarkValidMoves(G) {
@@ -29363,24 +29368,27 @@ const Totems = {
       }
     },
     clickPiece: (G, ctx, index) => {
-      G.activePiece = null;
-      unmarkValidMoves(G);
+      G.load = null;
       let clickedPiece = G.activeSquare.stack[index];
 
       if (clickedPiece.player == ctx.currentPlayer) {
         if (index == G.activeSquare.stack.length - 1) {
+          G.activePiece = null;
+          unmarkValidMoves(G);
           G.activePiece = clickedPiece;
           markValidMoves(G);
         } else if (index == G.activeSquare.stack.length - 2) {
           if (clickedPiece.type == "E" || clickedPiece.type == "F") {
+            G.activePiece = null;
+            unmarkValidMoves(G);
             G.activePiece = clickedPiece;
-            G.load = G.activePiece.stack[index + 1];
+            G.load = G.activeSquare.stack[index + 1];
             markValidMoves(G);
           }
 
           if (clickedPiece.type == "F") {
             G.stage = "Select a square to move load";
-            ctx.setStage('moveLoad');
+            ctx.events.setStage('moveLoad');
           }
         }
       }
@@ -29439,6 +29447,7 @@ const Totems = {
             }
           },
           cancel: (G, ctx) => {
+            G.load = null;
             G.activeSquare = G.squares[G.activePiece.currentSquare];
             G.stage = "Select a piece";
             ctx.events.endStage();
@@ -29452,8 +29461,13 @@ const Totems = {
               G.squares[destID].stackHeight += heightMap.get(G.load.type);
             }
 
-            G.squares[destID].stack.push(G.activePiece);
-            G.squares[destID].stackHeight += heightMap.get(G.activePiece.type);
+            if (G.activePiece.type == "F" && G.load !== null) {
+              G.squares[destID].stack.push(G.load);
+              G.squares[destID].stackHeight += heightMap.get(G.load.type);
+            } else {
+              G.squares[destID].stack.push(G.activePiece);
+              G.squares[destID].stackHeight += heightMap.get(G.activePiece.type);
+            }
 
             if (G.activePiece.type == "E" && G.load !== null) {
               G.squares[destID].stack.push(G.load);
@@ -29464,12 +29478,13 @@ const Totems = {
             G.squares[initialID].stackHeight -= heightMap.get(G.activePiece.type);
             G.squares[destID].stack[G.squares[destID].stack.length - 1].currentSquare = destID;
 
-            if (G.load !== null && (G.activePiece.type == "W" || G.activePiece.type == "W")) {
+            if (G.load !== null && (G.activePiece.type == "W" || G.activePiece.type == "E")) {
               G.squares[initialID].stack.pop();
               G.squares[initialID].stackHeight -= heightMap.get(G.activePiece.type);
               G.squares[destID].stack[G.squares[destID].stack.length - 2].currentSquare = destID;
             }
 
+            G.load = null;
             G.activePiece = null;
             unmarkValidMoves(G);
             G.activeSquare = null;
@@ -29513,6 +29528,13 @@ const Totems = {
       },
       moveLoad: {}
     }
+  },
+  endIf: (G, ctx) => {// if(isVictory(G)) {
+    //     return { winner: ctx.currentPlayer };
+    // }
+    // if(isDraw(G)) {
+    //     return { draw: true };
+    // }
   }
 };
 exports.Totems = Totems;
@@ -29547,11 +29569,16 @@ class TotemsClient {
     let board = document.createElement("div");
     board.className = "board";
     let div;
+    let topPiece;
 
     for (let i = 0; i < 100; i++) {
       div = document.createElement("div");
       div.className = "square";
       div.dataset.id = i;
+      topPiece = document.createElement("div");
+      topPiece.className = "top-piece";
+      topPiece.dataset.id = i;
+      div.appendChild(topPiece);
       board.appendChild(div);
     }
 
@@ -29579,25 +29606,11 @@ class TotemsClient {
     unloadButton.textContent = "Unload";
     buttonStack.appendChild(confirmButton);
     buttonStack.appendChild(carryButton);
-    buttonStack.appendChild(cancelButton);
     buttonStack.appendChild(unloadButton);
+    buttonStack.appendChild(cancelButton);
     main.appendChild(stack);
     main.appendChild(buttonStack);
-    this.rootElement.appendChild(main); // const rows = [];
-    // for(let i = 0;i < 10;i++) {
-    //     const squares = [];
-    //     for(let j = 0;j < 10;j++) {
-    //         const id = 10 * i + j;
-    //         div = document.createElement("div");
-    //         div.className = "square";
-    //         div.dataset.id = id;
-    //         squares.push(`<td class ="square" data-id="${id}"><td>`);
-    //     }
-    //     rows.push(`<tr class="board">${squares.join('')}</tr>`);
-    // }
-    // this.rootElement.innerHTML = `
-    //     <table class="board">${rows.join('')}<table>
-    // `;
+    this.rootElement.appendChild(main);
   }
 
   attachListeners() {
@@ -29640,6 +29653,19 @@ class TotemsClient {
     unloadButton.onclick = handleUnloadClick;
   }
 
+  updateListeners() {
+    const handlePieceClick = event => {
+      const index = parseInt(event.target.dataset.id);
+      console.log("Piece at index " + index + " clicked");
+      this.client.moves.clickPiece(index);
+    };
+
+    const pieces = this.rootElement.querySelectorAll('.stack-piece');
+    pieces.forEach(piece => {
+      piece.onclick = handlePieceClick;
+    });
+  }
+
   update(state) {
     const confirmButton = this.rootElement.querySelector('#confirm-button');
     confirmButton.style.display = "none";
@@ -29657,12 +29683,14 @@ class TotemsClient {
     if (state.G.stage == "Select a space to move") {
       cancelButton.style.display = "block";
 
-      if (state.G.activePiece !== null && state.G.activePiece.type == "F") {
-        carryButton.style.display = "block";
-      }
+      if (state.G.load === null) {
+        if (state.G.activePiece !== null && state.G.activePiece.type == "F") {
+          carryButton.style.display = "block";
+        }
 
-      if (state.G.activePiece !== null && state.G.activePiece.type == "W" && state.G.squares[state.G.activePiece.currentSquare].stackHeight > 2) {
-        carryButton.style.display = "block";
+        if (state.G.activePiece !== null && state.G.activePiece.type == "W" && state.G.squares[state.G.activePiece.currentSquare].stackHeight > 2) {
+          carryButton.style.display = "block";
+        }
       }
     }
 
@@ -29672,6 +29700,10 @@ class TotemsClient {
       if (state.G.activePiece !== null) {
         confirmButton.style.display = "block";
       }
+    }
+
+    if (state.G.load !== null && state.G.activePiece.type == "W") {
+      unloadButton.style.display = "block";
     }
 
     const squares = this.rootElement.querySelectorAll('.square');
@@ -29684,39 +29716,64 @@ class TotemsClient {
       if (piece !== undefined) {
         squareValue = piece.type;
         squareColor = piece.player;
-      }
+      } // square.textContent = squareValue;
 
-      square.textContent = squareValue;
-      square.style.color = squareColor < 0 ? "#f0f0f0" : squareColor == 0 ? "red" : "blue";
 
-      if (state.G.squares[squareID].side < 0) {
-        if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
-          square.style.backgroundColor = "#80d072";
-        } else {
-          square.style.backgroundColor = "#797";
-        }
-      } else if (state.G.squares[squareID].side == 0) {
-        if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
-          square.style.backgroundColor = "#ff9292";
-        } else {
-          square.style.backgroundColor = "#999292";
-        }
-      } else {
-        if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
-          square.style.backgroundColor = "#9992f0";
-        } else {
-          square.style.backgroundColor = "#929299";
-        }
-      }
+      square.classList.add("square-side" + state.G.squares[squareID].side); // if (state.G.squares[squareID].side < 0) {
+      //     if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
+      //         square.style.backgroundColor = "#80d072";
+      //     } else {
+      //         square.style.backgroundColor = "#5a5";
+      //     }
+      // } else if (state.G.squares[squareID].side == 0) {
+      //     if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
+      //         square.style.backgroundColor = "#ff9292";
+      //     } else {
+      //         square.style.backgroundColor = "#804050";
+      //     }
+      // } else {
+      //     if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
+      //         square.style.backgroundColor = "#9992f0";
+      //     } else {
+      //         square.style.backgroundColor = "#4c44c5";
+      //     }
+      // }
 
       if (state.G.squares[squareID].valid) {
-        square.style.border = "1px solid white";
+        square.classList.add("valid-square" + state.ctx.currentPlayer);
       } else {
-        square.style.border = "1px solid green";
+        square.classList.remove("valid-square0");
+        square.classList.remove("valid-square1");
       }
 
-      if (state.G.activeSquare !== null && state.G.activeSquare.id == squareID) {
-        square.style.border = "1px solid " + (state.ctx.currentPlayer == 0 ? "red" : "blue");
+      if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
+        square.classList.add("active-square" + state.ctx.currentPlayer);
+      } else {
+        square.classList.remove("active-square0");
+        square.classList.remove("active-square1");
+      }
+    });
+    const boardPieces = this.rootElement.querySelectorAll('.top-piece');
+    boardPieces.forEach(piece => {
+      piece.style.display = "none";
+      let stack = state.G.squares[piece.dataset.id].stack;
+
+      if (stack.length > 0) {
+        piece.style.display = "block";
+
+        for (let i = 0; i < 3; i++) {
+          piece.classList.remove("top-piece-player" + (i - 1));
+        }
+
+        piece.classList.add("top-piece-player" + stack[stack.length - 1].player);
+
+        if (stack[stack.length - 1].type == "T") {
+          piece.classList.add("top-piece-tree");
+        } else {
+          piece.classList.remove("top-piece-tree");
+        }
+
+        piece.textContent = stack[stack.length - 1].type;
       }
     });
     const stack = this.rootElement.querySelector(".stack");
@@ -29737,8 +29794,14 @@ class TotemsClient {
           stackPiece.classList.add("clickable-piece");
         }
 
+        if (state.G.activeSquare.stack[i] == state.G.activePiece) {
+          stackPiece.classList.add("selected-piece");
+        }
+
         stack.appendChild(stackPiece);
       }
+
+      this.updateListeners();
     }
   }
 
@@ -29779,7 +29842,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "50297" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "64806" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
