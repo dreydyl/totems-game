@@ -47,16 +47,19 @@ function createStartingArray() {
             valid: false,
             winning: false
         }));
+    let pieceId = 0;
     for (let i = 0; i < 100; i++) {
         setup[i].id = i;
         if (boardSetup[i] != "") {
             setup[i].stack.push({
+                id: pieceId,
                 currentSquare: i,
                 player: colorSetup[i],
                 type: boardSetup[i],
                 valid: false
             });
             setup[i].stackHeight = heightMap.get(boardSetup[i]);
+            pieceId++;
         }
     }
     let redCoords;
@@ -264,6 +267,7 @@ export const Totems = {
     moves: {
         clickSquare: (G, ctx, id) => {
             G.activePiece = null;
+            G.load = null;
             unmarkValidMoves(G);
             let clickedSquare = G.squares[id];
             G.activeSquare = clickedSquare;
@@ -292,16 +296,17 @@ export const Totems = {
                         G.load = G.activeSquare.stack[index + 1];
                         markValidMoves(G);
                     }
-                    if (clickedPiece.type == "F") {
-                        G.stage = "Select a square to move load";
-                        ctx.events.setStage('moveLoad');
-                    }
                 }
             }
         },
         confirm: (G, ctx) => {
-            G.activeSquare = null;
-            G.stage = "Select a space to move";
+            if (G.activePiece.type == "F" && G.load !== null && G.activeSquare.stack[G.activeSquare.stack.length - 2].id == G.activePiece.id) {
+                G.stage = "Select a space to move load";
+                // ctx.events.setStage('moveLoad');
+                G.activePiece = G.load;
+            } else {
+                G.stage = "Select a space to move";
+            }
             ctx.events.setStage('movePiece');
             return;
         }
@@ -342,7 +347,7 @@ export const Totems = {
                         } else if (G.activePiece.type == "W") {
                             let activeSquare = G.squares[G.activePiece.currentSquare];
                             G.load = activeSquare.stack[activeSquare.stack.length - 2];
-                            if(!G.load) {
+                            if (!G.load) {
                                 G.load = null;
                             }
                         }
@@ -351,10 +356,7 @@ export const Totems = {
                         G.load = null;
                     },
                     clickSquare: (G, ctx, id) => {
-                        let clickedSquare = G.squares[id];
-                        if (clickedSquare.valid) {
-                            G.activeSquare = G.squares[id];
-                        }
+                        G.activeSquare = G.squares[id];
                     },
                     cancel: (G, ctx) => {
                         G.load = null;
@@ -367,28 +369,24 @@ export const Totems = {
                         let initialID = G.activePiece.currentSquare;
 
                         if (G.activePiece.type == "W" && G.load !== null) {
+                            G.load.currentSquare = destID;
                             G.squares[destID].stack.push(G.load);
                             G.squares[destID].stackHeight += heightMap.get(G.load.type);
                         }
-                        if(G.activePiece.type == "F" && G.load !== null) {
-                            G.squares[destID].stack.push(G.load);
-                            G.squares[destID].stackHeight += heightMap.get(G.load.type);
-                        } else {
-                            G.squares[destID].stack.push(G.activePiece);
-                            G.squares[destID].stackHeight += heightMap.get(G.activePiece.type);
-                        }
+                        G.activePiece.currentSquare = destID;
+                        G.squares[destID].stack.push(G.activePiece);
+                        G.squares[destID].stackHeight += heightMap.get(G.activePiece.type);
                         if (G.activePiece.type == "E" && G.load !== null) {
+                            G.load.currentSquare = destID;
                             G.squares[destID].stack.push(G.load);
                             G.squares[destID].stackHeight += heightMap.get(G.load.type);
                         }
 
                         G.squares[initialID].stack.pop();
                         G.squares[initialID].stackHeight -= heightMap.get(G.activePiece.type);
-                        G.squares[destID].stack[G.squares[destID].stack.length - 1].currentSquare = destID;
-                        if (G.load !== null && (G.activePiece.type == "W" || G.activePiece.type == "E")) {
+                        if (G.load !== null && (G.activePiece.type == "W" || G.activePiece.type == "E") && G.stage != "Select a space to move load") {
                             G.squares[initialID].stack.pop();
                             G.squares[initialID].stackHeight -= heightMap.get(G.activePiece.type);
-                            G.squares[destID].stack[G.squares[destID].stack.length - 2].currentSquare = destID;
                         }
                         G.load = null;
                         G.activePiece = null;
@@ -428,14 +426,24 @@ export const Totems = {
                     cancel: (G, ctx) => {
                         G.activePiece = G.activeSquare.stack[G.activeSquare.stack.length - 1];
                         markValidMoves(G);
-                        G.activeSquare = null;
                         G.stage = "Select a space to move";
                         ctx.events.setStage('movePiece');
                     }
                 }
             },
             moveLoad: {
+                moves: {
+                    clickSquare: (G, ctx, id) => {
+                        console.log("HERE");
+                        G.activePiece = G.load;
+                    },
+                    confirm: (G, ctx) => {
 
+                    },
+                    cancel: (G, ctx) => {
+
+                    }
+                }
             }
         }
     },

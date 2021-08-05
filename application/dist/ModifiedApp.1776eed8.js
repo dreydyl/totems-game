@@ -29076,18 +29076,21 @@ function createStartingArray() {
     valid: false,
     winning: false
   }));
+  let pieceId = 0;
 
   for (let i = 0; i < 100; i++) {
     setup[i].id = i;
 
     if (boardSetup[i] != "") {
       setup[i].stack.push({
+        id: pieceId,
         currentSquare: i,
         player: colorSetup[i],
         type: boardSetup[i],
         valid: false
       });
       setup[i].stackHeight = heightMap.get(boardSetup[i]);
+      pieceId++;
     }
   }
 
@@ -29354,6 +29357,7 @@ const Totems = {
   moves: {
     clickSquare: (G, ctx, id) => {
       G.activePiece = null;
+      G.load = null;
       unmarkValidMoves(G);
       let clickedSquare = G.squares[id];
       G.activeSquare = clickedSquare;
@@ -29385,17 +29389,18 @@ const Totems = {
             G.load = G.activeSquare.stack[index + 1];
             markValidMoves(G);
           }
-
-          if (clickedPiece.type == "F") {
-            G.stage = "Select a square to move load";
-            ctx.events.setStage('moveLoad');
-          }
         }
       }
     },
     confirm: (G, ctx) => {
-      G.activeSquare = null;
-      G.stage = "Select a space to move";
+      if (G.activePiece.type == "F" && G.load !== null && G.activeSquare.stack[G.activeSquare.stack.length - 2].id == G.activePiece.id) {
+        G.stage = "Select a space to move load"; // ctx.events.setStage('moveLoad');
+
+        G.activePiece = G.load;
+      } else {
+        G.stage = "Select a space to move";
+      }
+
       ctx.events.setStage('movePiece');
       return;
     }
@@ -29440,11 +29445,7 @@ const Totems = {
             G.load = null;
           },
           clickSquare: (G, ctx, id) => {
-            let clickedSquare = G.squares[id];
-
-            if (clickedSquare.valid) {
-              G.activeSquare = G.squares[id];
-            }
+            G.activeSquare = G.squares[id];
           },
           cancel: (G, ctx) => {
             G.load = null;
@@ -29457,31 +29458,27 @@ const Totems = {
             let initialID = G.activePiece.currentSquare;
 
             if (G.activePiece.type == "W" && G.load !== null) {
+              G.load.currentSquare = destID;
               G.squares[destID].stack.push(G.load);
               G.squares[destID].stackHeight += heightMap.get(G.load.type);
             }
 
-            if (G.activePiece.type == "F" && G.load !== null) {
-              G.squares[destID].stack.push(G.load);
-              G.squares[destID].stackHeight += heightMap.get(G.load.type);
-            } else {
-              G.squares[destID].stack.push(G.activePiece);
-              G.squares[destID].stackHeight += heightMap.get(G.activePiece.type);
-            }
+            G.activePiece.currentSquare = destID;
+            G.squares[destID].stack.push(G.activePiece);
+            G.squares[destID].stackHeight += heightMap.get(G.activePiece.type);
 
             if (G.activePiece.type == "E" && G.load !== null) {
+              G.load.currentSquare = destID;
               G.squares[destID].stack.push(G.load);
               G.squares[destID].stackHeight += heightMap.get(G.load.type);
             }
 
             G.squares[initialID].stack.pop();
             G.squares[initialID].stackHeight -= heightMap.get(G.activePiece.type);
-            G.squares[destID].stack[G.squares[destID].stack.length - 1].currentSquare = destID;
 
-            if (G.load !== null && (G.activePiece.type == "W" || G.activePiece.type == "E")) {
+            if (G.load !== null && (G.activePiece.type == "W" || G.activePiece.type == "E") && G.stage != "Select a space to move load") {
               G.squares[initialID].stack.pop();
               G.squares[initialID].stackHeight -= heightMap.get(G.activePiece.type);
-              G.squares[destID].stack[G.squares[destID].stack.length - 2].currentSquare = destID;
             }
 
             G.load = null;
@@ -29520,13 +29517,21 @@ const Totems = {
           cancel: (G, ctx) => {
             G.activePiece = G.activeSquare.stack[G.activeSquare.stack.length - 1];
             markValidMoves(G);
-            G.activeSquare = null;
             G.stage = "Select a space to move";
             ctx.events.setStage('movePiece');
           }
         }
       },
-      moveLoad: {}
+      moveLoad: {
+        moves: {
+          clickSquare: (G, ctx, id) => {
+            console.log("HERE");
+            G.activePiece = G.load;
+          },
+          confirm: (G, ctx) => {},
+          cancel: (G, ctx) => {}
+        }
+      }
     }
   },
   endIf: (G, ctx) => {// if(isVictory(G)) {
@@ -29566,6 +29571,8 @@ class TotemsClient {
     let main = document.createElement("div");
     main.className = "main"; //board
 
+    let boardFlex = document.createElement("div");
+    boardFlex.className = "board-flex";
     let board = document.createElement("div");
     board.className = "board";
     let div;
@@ -29582,10 +29589,15 @@ class TotemsClient {
       board.appendChild(div);
     }
 
-    main.appendChild(board); //stack
+    boardFlex.appendChild(board);
+    main.appendChild(boardFlex); //stack
 
+    let initialStack = document.createElement("div");
+    initialStack.className = "init-stack";
     let stack = document.createElement("div");
     stack.className = "stack";
+    main.appendChild(initialStack);
+    main.appendChild(stack);
     let buttonStack = document.createElement("div");
     buttonStack.className = "button-stack";
     let confirmButton = document.createElement("div");
@@ -29608,7 +29620,6 @@ class TotemsClient {
     buttonStack.appendChild(carryButton);
     buttonStack.appendChild(unloadButton);
     buttonStack.appendChild(cancelButton);
-    main.appendChild(stack);
     main.appendChild(buttonStack);
     this.rootElement.appendChild(main);
   }
@@ -29653,11 +29664,15 @@ class TotemsClient {
     unloadButton.onclick = handleUnloadClick;
   }
 
-  updateListeners() {
+  updateListeners(state) {
     const handlePieceClick = event => {
       const index = parseInt(event.target.dataset.id);
-      console.log("Piece at index " + index + " clicked");
-      this.client.moves.clickPiece(index);
+
+      if (index == -1) {
+        this.client.moves.confirm();
+      } else {
+        this.client.moves.clickPiece(index);
+      }
     };
 
     const pieces = this.rootElement.querySelectorAll('.stack-piece');
@@ -29678,9 +29693,13 @@ class TotemsClient {
 
     if (state.G.activePiece !== null && state.G.activePiece.player >= 0 && state.G.activeSquare !== null) {
       confirmButton.style.display = "block";
+
+      if (state.G.stage.startsWith("Select a space to move") && !state.G.activeSquare.valid) {
+        confirmButton.style.display = "none";
+      }
     }
 
-    if (state.G.stage == "Select a space to move") {
+    if (state.G.stage.startsWith("Select a space to move")) {
       cancelButton.style.display = "block";
 
       if (state.G.load === null) {
@@ -29702,7 +29721,7 @@ class TotemsClient {
       }
     }
 
-    if (state.G.load !== null && state.G.activePiece.type == "W") {
+    if (state.G.load !== null && state.G.activePiece.type == "W" && state.G.stage != "Select a space to move load") {
       unloadButton.style.display = "block";
     }
 
@@ -29716,37 +29735,26 @@ class TotemsClient {
       if (piece !== undefined) {
         squareValue = piece.type;
         squareColor = piece.player;
-      } // square.textContent = squareValue;
+      }
 
-
-      square.classList.add("square-side" + state.G.squares[squareID].side); // if (state.G.squares[squareID].side < 0) {
-      //     if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
-      //         square.style.backgroundColor = "#80d072";
-      //     } else {
-      //         square.style.backgroundColor = "#5a5";
-      //     }
-      // } else if (state.G.squares[squareID].side == 0) {
-      //     if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
-      //         square.style.backgroundColor = "#ff9292";
-      //     } else {
-      //         square.style.backgroundColor = "#804050";
-      //     }
-      // } else {
-      //     if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
-      //         square.style.backgroundColor = "#9992f0";
-      //     } else {
-      //         square.style.backgroundColor = "#4c44c5";
-      //     }
-      // }
+      square.classList.add("square-side" + state.G.squares[squareID].side);
+      square.classList.remove("valid-stage2");
 
       if (state.G.squares[squareID].valid) {
-        square.classList.add("valid-square" + state.ctx.currentPlayer);
+        square.classList.add("valid-" + (state.G.stage == "Select a piece" ? "square" + state.ctx.currentPlayer : "stage2"));
       } else {
         square.classList.remove("valid-square0");
         square.classList.remove("valid-square1");
       }
 
       if (state.G.activePiece !== null && state.G.activePiece.currentSquare == squareID) {
+        square.classList.add("active-piece" + state.ctx.currentPlayer);
+      } else {
+        square.classList.remove("active-piece0");
+        square.classList.remove("active-piece1");
+      }
+
+      if (state.G.activeSquare !== null && state.G.activeSquare.id == squareID) {
         square.classList.add("active-square" + state.ctx.currentPlayer);
       } else {
         square.classList.remove("active-square0");
@@ -29776,32 +29784,90 @@ class TotemsClient {
         piece.textContent = stack[stack.length - 1].type;
       }
     });
+    const initialStack = this.rootElement.querySelector(".init-stack");
     const stack = this.rootElement.querySelector(".stack");
-    const stackedPieces = this.rootElement.querySelectorAll(".stack-piece");
+    let stackedPieces = this.rootElement.querySelectorAll(".init-stack-piece");
+    stackedPieces.forEach(piece => {
+      initialStack.removeChild(piece);
+    });
+    stackedPieces = this.rootElement.querySelectorAll(".stack-piece");
     stackedPieces.forEach(piece => {
       stack.removeChild(piece);
     });
 
+    if (state.G.activeSquare !== null && state.G.activePiece !== null && state.G.activeSquare.id != state.G.activePiece.currentSquare) {
+      if (state.G.stage != "Select a piece") {
+        for (let i = 0; i < state.G.squares[state.G.activePiece.currentSquare].stack.length; i++) {
+          let stackPiece = document.createElement("div");
+          stackPiece.className = "init-stack-piece";
+          stackPiece.dataset.id = i;
+          stackPiece.textContent = state.G.squares[state.G.activePiece.currentSquare].stack[i].type;
+          stackPiece.classList.add("piece-" + state.G.squares[state.G.activePiece.currentSquare].stack[i].type, "piece-player" + state.G.squares[state.G.activePiece.currentSquare].stack[i].player);
+
+          if (state.G.squares[state.G.activePiece.currentSquare].stack[i] == state.G.activePiece) {
+            stackPiece.classList.add("selected-piece");
+          }
+
+          initialStack.appendChild(stackPiece);
+        }
+      }
+    }
+
     if (state.G.activeSquare !== null) {
-      for (let i = 0; i < state.G.activeSquare.stack.length; i++) {
+      for (let j = 0; j < state.G.activeSquare.stack.length; j++) {
         let stackPiece = document.createElement("div");
         stackPiece.className = "stack-piece";
-        stackPiece.dataset.id = i;
-        stackPiece.textContent = state.G.activeSquare.stack[i].type;
-        stackPiece.classList.add("piece-" + state.G.activeSquare.stack[i].type, "piece-player" + state.G.activeSquare.stack[i].player);
+        stackPiece.dataset.id = j;
+        stackPiece.textContent = state.G.activeSquare.stack[j].type;
+        stackPiece.classList.add("piece-" + state.G.activeSquare.stack[j].type, "piece-player" + state.G.activeSquare.stack[j].player);
 
-        if (state.G.activeSquare.stack[i].player == state.ctx.currentPlayer) {
+        if (state.G.stage != "Select a space to move" && state.G.activeSquare.stack[j].player == state.ctx.currentPlayer && (j == state.G.activeSquare.stack.length - 1 || j == state.G.activeSquare.stack.length - 2 && (state.G.activeSquare.stack[j].type == "F" || state.G.activeSquare.stack[j].type == "E"))) {
           stackPiece.classList.add("clickable-piece");
+
+          if (state.G.activePiece !== null && state.G.activeSquare.stack[j].id != state.G.activePiece.id) {
+            stackPiece.classList.add("clickable-piece" + state.G.activeSquare.stack[j].player);
+          }
         }
 
-        if (state.G.activeSquare.stack[i] == state.G.activePiece) {
+        if (state.G.activeSquare.stack[j] == state.G.activePiece) {
           stackPiece.classList.add("selected-piece");
+        }
+
+        if (state.G.activeSquare.stack[j] == state.G.load) {
+          stackPiece.classList.add("loaded-piece");
         }
 
         stack.appendChild(stackPiece);
       }
 
-      this.updateListeners();
+      if (state.G.stage.startsWith("Select a space to move") && state.G.activeSquare.valid || state.G.stage == "Select a piece to carry" && state.G.activePiece !== null) {
+        if (state.G.load !== null && state.G.activePiece.type == "W") {
+          let stackPiece = document.createElement("div");
+          stackPiece.className = "stack-piece";
+          stackPiece.dataset.id = -1;
+          stackPiece.textContent = state.G.load.type;
+          stackPiece.classList.add("piece-" + state.G.load.type, "piece-player" + state.G.load.player, "phantom-piece" + state.G.load.player, "clickable-piece");
+          stack.appendChild(stackPiece);
+        }
+
+        let stackPiece = document.createElement("div");
+        stackPiece.className = "stack-piece";
+        stackPiece.dataset.id = -1;
+        stackPiece.textContent = state.G.activePiece.type;
+        stackPiece.classList.add("piece-" + state.G.activePiece.type, "piece-player" + state.G.activePiece.player, "phantom-piece" + state.G.activePiece.player, "clickable-piece");
+        stack.appendChild(stackPiece);
+
+        if (state.G.load !== null && state.G.activePiece.type == "E") {
+          let stackPiece = document.createElement("div");
+          stackPiece.className = "stack-piece";
+          stackPiece.dataset.id = -1;
+          stackPiece.textContent = state.G.load.type;
+          stackPiece.classList.add("piece-" + state.G.load.type, "piece-player" + state.G.load.player, "phantom-piece" + state.G.load.player, "clickable-piece");
+          stack.appendChild(stackPiece);
+        }
+      }
+
+      this.updateListeners(state);
     }
   }
 
@@ -29842,7 +29908,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "64806" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "50979" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
