@@ -29066,8 +29066,7 @@ heightMap.set("S", 1);
 heightMap.set("T", 2);
 
 function createStartingArray() {
-  const boardSetup = ["S", "H", "V", "F", "F", "F", "F", "", "", "", "H", "S", "", "V", "B", "", "", "", "C", "", "V", "", "S", "", "V", "R", "", "E", "", "", "F", "V", "", "T", "", "V", "W", "", "", "A", "F", "B", "V", "", "T", "", "V", "R", "", "A", "F", "", "R", "V", "", "T", "", "V", "B", "A", "F", "", "", "W", "V", "", "T", "", "V", "A", "", "", "E", "", "R", "V", "", "S", "", "V", "", "C", "", "", "", "B", "V", "", "S", "H", "", "", "", "A", "A", "A", "A", "V", "H", "S"];
-  const colorSetup = ["-1", "1", "1", "1", "1", "1", "1", "-1", "-1", "-1", "0", "-1", "-1", "1", "1", "-1", "-1", "-1", "1", "-1", "0", "-1", "-1", "-1", "1", "1", "-1", "1", "-1", "-1", "0", "0", "-1", "-1", "-1", "1", "1", "-1", "-1", "1", "0", "0", "0", "-1", "-1", "-1", "1", "1", "-1", "1", "0", "-1", "0", "0", "-1", "-1", "-1", "1", "1", "1", "0", "-1", "-1", "0", "0", "-1", "-1", "-1", "1", "1", "-1", "-1", "0", "-1", "0", "0", "-1", "-1", "-1", "1", "-1", "0", "-1", "-1", "-1", "0", "0", "-1", "-1", "1", "-1", "-1", "-1", "0", "0", "0", "0", "0", "0", "-1"];
+  const boardSetup = ["S", "", "", "", "", "", "", "", "", "", "", "S", "H", "V", "B", "F", "F", "F", "C", "", "", "H", "S", "", "V", "R", "", "E", "A", "", "", "V", "", "T", "", "V", "W", "", "A", "", "", "B", "V", "", "T", "", "V", "R", "A", "", "", "F", "R", "V", "", "T", "", "V", "B", "", "", "F", "", "W", "V", "", "T", "", "V", "", "", "F", "E", "", "R", "V", "", "S", "H", "", "", "C", "A", "A", "A", "B", "V", "H", "S", "", "", "", "", "", "", "", "", "", "", "S"];
   const setup = Array(100).fill().map(() => ({
     id: 0,
     stack: [],
@@ -29085,7 +29084,7 @@ function createStartingArray() {
       setup[i].stack.push({
         id: pieceId,
         currentSquare: i,
-        player: colorSetup[i],
+        player: -1,
         type: boardSetup[i],
         valid: false
       });
@@ -29095,7 +29094,9 @@ function createStartingArray() {
   }
 
   let redCoords;
+  let redIndex;
   let blueCoords;
+  let blueIndex;
 
   for (let i = 0; i < 10; i++) {
     for (let j = 0; j < i; j++) {
@@ -29103,12 +29104,16 @@ function createStartingArray() {
         x: i,
         y: j
       };
-      setup[toIndex(blueCoords)].side = 1;
+      blueIndex = toIndex(blueCoords);
+      setup[blueIndex].side = 1;
+      if (boardSetup[blueIndex].length > 0) setup[blueIndex].stack[0].player = 1;
       redCoords = {
         x: 10 - i - 1,
         y: 10 - (j + 1)
       };
-      setup[toIndex(redCoords)].side = 0;
+      redIndex = toIndex(redCoords);
+      setup[redIndex].side = 0;
+      if (boardSetup[redIndex].length > 0) setup[redIndex].stack[0].player = 0;
     }
   }
 
@@ -29908,7 +29913,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "50979" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "59250" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
